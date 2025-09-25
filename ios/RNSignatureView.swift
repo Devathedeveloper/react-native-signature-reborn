@@ -2,6 +2,29 @@ import Foundation
 import React
 import UIKit
 
+private enum ExportFormat {
+  case png
+  case jpeg
+
+  init(format: String) {
+    switch format.lowercased() {
+    case "jpeg", "jpg":
+      self = .jpeg
+    default:
+      self = .png
+    }
+  }
+
+  var fileExtension: String {
+    switch self {
+    case .png:
+      return "png"
+    case .jpeg:
+      return "jpg"
+    }
+  }
+}
+
 private final class Stroke {
   let path: UIBezierPath
   let color: UIColor
@@ -26,15 +49,38 @@ class RNSignatureView: UIView {
   @objc var onStrokeEnd: RCTDirectEventBlock?
   @objc var strokeColor: UIColor = .black
   @objc var strokeWidth: CGFloat = 3.0
+  @objc var imageFormat: NSString = "png" {
+    didSet {
+      exportFormat = ExportFormat(format: imageFormat as String)
+    }
+  }
+  @objc var imageQuality: NSNumber = 0.8 {
+    didSet {
+      exportQuality = RNSignatureView.clampQuality(imageQuality)
+    }
+  }
+  @objc var shouldIncludeBase64: Bool = true
+  @objc var imageBackgroundColor: UIColor?
+  @objc var exportScale: NSNumber = 0 {
+    didSet {
+      exportScaleFactor = RNSignatureView.clampScale(exportScale)
+    }
+  }
 
   private var strokes: [Stroke] = []
   private var currentStroke: Stroke?
+  private var exportFormat: ExportFormat = .png
+  private var exportQuality: CGFloat = 0.8
+  private var exportScaleFactor: CGFloat = 0
 
   override init(frame: CGRect) {
     super.init(frame: frame)
     isOpaque = false
     isMultipleTouchEnabled = false
     contentMode = .redraw
+    exportFormat = ExportFormat(format: imageFormat as String)
+    exportQuality = RNSignatureView.clampQuality(imageQuality)
+    exportScaleFactor = RNSignatureView.clampScale(exportScale)
   }
 
   required init?(coder: NSCoder) {
@@ -115,14 +161,16 @@ class RNSignatureView: UIView {
       return
     }
 
+    let fillColor = imageBackgroundColor ?? backgroundColor
     let format = UIGraphicsImageRendererFormat.default()
-    format.scale = UIScreen.main.scale
-    format.opaque = backgroundColor != nil && backgroundColor != .clear
+    let scale = exportScaleFactor > 0 ? exportScaleFactor : UIScreen.main.scale
+    format.scale = scale
+    format.opaque = fillColor != nil && fillColor != .clear
 
     let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
     let image = renderer.image { _ in
-      if let backgroundColor, backgroundColor != .clear {
-        backgroundColor.setFill()
+      if let fillColor, fillColor != .clear {
+        fillColor.setFill()
         UIBezierPath(rect: bounds).fill()
       }
 
@@ -133,19 +181,30 @@ class RNSignatureView: UIView {
       }
     }
 
-    guard let data = image.pngData() else {
+    let data: Data?
+    switch exportFormat {
+    case .png:
+      data = image.pngData()
+    case .jpeg:
+      data = image.jpegData(compressionQuality: exportQuality)
+    }
+
+    guard let data else {
       return
     }
 
-    let filename = "signature-\(UUID().uuidString).png"
+    let filename = "signature-\(UUID().uuidString).\(exportFormat.fileExtension)"
     let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(filename)
 
     do {
       try data.write(to: url, options: .atomic)
-      let payload: [String: Any] = [
+      var payload: [String: Any] = [
         "path": url.path,
-        "base64": data.base64EncodedString(),
       ]
+
+      if shouldIncludeBase64 {
+        payload["base64"] = data.base64EncodedString()
+      }
       onSave?(payload)
     } catch {
       NSLog("[RNSignatureView] Failed to persist signature: %@", error.localizedDescription)
@@ -158,5 +217,20 @@ class RNSignatureView: UIView {
 
   func updateStrokeWidth(_ width: CGFloat) {
     strokeWidth = width
+  }
+}
+
+private extension RNSignatureView {
+  static func clampQuality(_ value: NSNumber) -> CGFloat {
+    let quality = CGFloat(truncating: value)
+    return min(max(quality, 0), 1)
+  }
+
+  static func clampScale(_ value: NSNumber) -> CGFloat {
+    let scale = CGFloat(truncating: value)
+    guard scale.isFinite, scale > 0 else {
+      return 0
+    }
+    return min(max(scale, 0.1), 4)
   }
 }

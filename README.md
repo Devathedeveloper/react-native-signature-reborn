@@ -6,7 +6,8 @@ A production-ready, native-accelerated signature capture component for React Nat
 
 - ✍️ **Smooth, pressure-free drawing** powered by native Swift and Kotlin rendering layers
 - 🧼 **One-tap clearing** of the current canvas
-- 💾 **Instant exporting** to a PNG file + Base64 string saved in the temp directory
+- 💾 **Instant exporting** to a file + optional Base64 string saved in the temp directory
+- 🗜️ **Tunable output** – choose PNG for crisp edges or JPEG with custom quality for lightweight payloads
 - 🎨 **Runtime styling** with `setStrokeColor()` and `setStrokeWidth()` helpers
 - 📐 **Responsive by default** – the canvas automatically fills its container
 - ⚛️ **TypeScript friendly** with typed refs, props, and result payloads
@@ -69,6 +70,8 @@ export default function SignatureExample() {
           style={styles.signature}
           strokeColor="#0A84FF"
           strokeWidth={4}
+          imageFormat="jpeg"
+          imageQuality={0.7}
           onSave={setLatestSignature}
         />
       </View>
@@ -121,14 +124,30 @@ signatureRef.current?.setStrokeColor('#FF2D55'); // switches to a new color
 signatureRef.current?.setStrokeWidth(6); // use thicker lines
 ```
 
+### Export customization
+
+Fine-tune how much data you persist when calling `save()`:
+
+```tsx
+<SignatureView
+  imageFormat="jpeg"        // switch to JPEG to reduce file size
+  imageQuality={0.6}         // tweak compression (only for JPEG)
+  shouldIncludeBase64={false} // omit the Base64 payload when you only need the file path
+  imageBackgroundColor="#FFFFFF" // force opaque output even if the view is transparent
+  exportScale={0.75}         // shrink pixel dimensions to further trim the bytes
+/>
+```
+
+Set `exportScale` below `1` to downscale the exported bitmap, which typically brings the payload well under 100 KB even for large signatures. When you need transparent PNGs on screen but opaque JPEG exports, provide `imageBackgroundColor` so the renderer fills the canvas before compressing.
+
 ### Event payload
 
 When `save()` completes (or the user triggers `onSave` via native UI in the future), you receive:
 
 ```ts
 interface SignatureResult {
-  path: string;   // absolute path to the generated PNG file
-  base64: string; // the same PNG encoded in Base64 (no prefix)
+  path: string;    // absolute path to the generated image file
+  base64?: string; // optional Base64 payload (enable/disable via shouldIncludeBase64)
 }
 ```
 
