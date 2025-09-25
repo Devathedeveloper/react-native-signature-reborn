@@ -11,6 +11,7 @@ A native-accelerated signature capture component for React Native that feels at 
 - 💾 **Instant exporting** to a file + optional Base64 string saved in the temp directory
 - 🗜️ **Tunable output** – choose PNG for crisp edges or JPEG with custom quality for lightweight payloads
 - 🎨 **Runtime styling** with `setStrokeColor()` and `setStrokeWidth()` helpers
+- 💫 **Optional live ink ripples** that follow the pen with customizable duration, color, and size
 - 📐 **Responsive by default** – the canvas automatically fills its container
 - ⚛️ **TypeScript friendly** with typed refs, props, and result payloads
 
@@ -170,6 +171,21 @@ Fine-tune how much data you persist when calling `save()`:
 ```
 
 Set `exportScale` below `1` to downscale the exported bitmap, which typically brings the payload well under 100 KB even for large signatures. When you need transparent PNGs on screen but opaque JPEG exports, provide `imageBackgroundColor` so the renderer fills the canvas before compressing.
+
+### Animated signing experience
+
+Turn on the native ripple animation to give users immediate visual feedback as they glide across the canvas:
+
+```tsx
+<SignatureView
+  signingAnimationEnabled
+  signingAnimationColor="rgba(10, 132, 255, 0.4)"
+  signingAnimationDuration={260} // milliseconds
+  signingAnimationRadiusMultiplier={3.5} // relative to the current stroke width
+/>
+```
+
+All animation knobs can be tweaked at runtime. Disable the effect entirely by setting `signingAnimationEnabled={false}` for a classic ink-only experience.
 
 ### Event payload
 

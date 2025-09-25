@@ -18,22 +18,20 @@ class SignatureViewManager : SimpleViewManager<SignatureView>() {
     color?.let { view.setStrokeColorInternal(it) }
   }
 
-  // Temporarily commented out to fix type issue
-  // @ReactProp(name = "strokeWidth")
-  // fun setStrokeWidth(view: SignatureView, width: Float?) {
-  //   width?.let { view.setStrokeWidthInternal(it) }
-  // }
+  @ReactProp(name = "strokeWidth")
+  fun setStrokeWidth(view: SignatureView, width: Double?) {
+    width?.let { view.setStrokeWidthInternal(it.toFloat()) }
+  }
 
   @ReactProp(name = "imageFormat")
   fun setImageFormat(view: SignatureView, format: String?) {
     view.setImageFormat(format)
   }
 
-  // Temporarily commented out to fix type issue
-  // @ReactProp(name = "imageQuality")
-  // fun setImageQuality(view: SignatureView, quality: Double?) {
-  //   quality?.let { view.setImageQualityInternal(it) }
-  // }
+  @ReactProp(name = "imageQuality")
+  fun setImageQuality(view: SignatureView, quality: Double?) {
+    view.setImageQualityInternal(quality)
+  }
 
   @ReactProp(name = "shouldIncludeBase64")
   fun setShouldIncludeBase64(view: SignatureView, include: Boolean?) {
@@ -45,11 +43,30 @@ class SignatureViewManager : SimpleViewManager<SignatureView>() {
     view.setImageBackgroundColorInternal(color)
   }
 
-  // Temporarily commented out to fix type issue
-  // @ReactProp(name = "exportScale")
-  // fun setExportScale(view: SignatureView, scale: Double?) {
-  //   scale?.let { view.setExportScaleInternal(it) }
-  // }
+  @ReactProp(name = "exportScale")
+  fun setExportScale(view: SignatureView, scale: Double?) {
+    view.setExportScaleInternal(scale)
+  }
+
+  @ReactProp(name = "signingAnimationEnabled")
+  fun setSigningAnimationEnabled(view: SignatureView, enabled: Boolean?) {
+    view.setSigningAnimationEnabled(enabled)
+  }
+
+  @ReactProp(name = "signingAnimationColor", customType = "Color")
+  fun setSigningAnimationColor(view: SignatureView, color: Int?) {
+    view.setSigningAnimationColorInternal(color)
+  }
+
+  @ReactProp(name = "signingAnimationDuration")
+  fun setSigningAnimationDuration(view: SignatureView, duration: Double?) {
+    view.setSigningAnimationDuration(duration)
+  }
+
+  @ReactProp(name = "signingAnimationRadiusMultiplier")
+  fun setSigningAnimationRadiusMultiplier(view: SignatureView, multiplier: Double?) {
+    view.setSigningAnimationRadiusMultiplier(multiplier)
+  }
 
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> {
     return MapBuilder.builder<String, Any>()

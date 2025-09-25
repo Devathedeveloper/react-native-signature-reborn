@@ -22,6 +22,10 @@ interface NativeProps extends ViewProps {
   shouldIncludeBase64?: boolean;
   imageBackgroundColor?: ColorValue;
   exportScale?: number;
+  signingAnimationEnabled?: boolean;
+  signingAnimationColor?: ColorValue;
+  signingAnimationDuration?: number;
+  signingAnimationRadiusMultiplier?: number;
   onSave?: (event: NativeSignatureSavedEvent) => void;
   onStrokeStart?: (event: NativeStrokeEvent) => void;
   onStrokeEnd?: (event: NativeStrokeEvent) => void;
@@ -62,12 +66,21 @@ const getCommandId = (command: string) => {
   return 0;
 };
 
+const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+
+const debugLog = (...args: unknown[]) => {
+  if (isDev) {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+
 const dispatchCommand = (
   viewRef: React.RefObject<any>,
   command: string,
   args: unknown[] = [],
 ) => {
-  console.log(`SignatureView: Attempting to dispatch '${command}' with args:`, args);
+  debugLog(`SignatureView: Attempting to dispatch '${command}' with args:`, args);
   
   if (!viewRef.current) {
     console.warn(`SignatureView: Cannot dispatch '${command}' - ref is null`);
@@ -75,7 +88,7 @@ const dispatchCommand = (
   }
 
   const node = findNodeHandle(viewRef.current);
-  console.log(`SignatureView: Node handle for '${command}':`, node);
+  debugLog(`SignatureView: Node handle for '${command}':`, node);
   
   if (node === null || node === undefined) {
     console.warn(`SignatureView: Cannot dispatch '${command}' - node handle is null`);
@@ -84,9 +97,9 @@ const dispatchCommand = (
 
   try {
     const commandId = getCommandId(command);
-    console.log(`SignatureView: Command ID for '${command}':`, commandId);
+    debugLog(`SignatureView: Command ID for '${command}':`, commandId);
     UIManager.dispatchViewManagerCommand(node, commandId, args);
-    console.log(`SignatureView: Successfully dispatched '${command}'`);
+    debugLog(`SignatureView: Successfully dispatched '${command}'`);
   } catch (error) {
     console.error(`SignatureView: Error dispatching '${command}':`, error);
   }
@@ -150,6 +163,25 @@ export interface SignatureViewProps extends ViewProps {
    * Use a value below `1` to downscale the output and shrink the file size.
    */
   exportScale?: number;
+  /**
+   * Enables the native ripple animation that follows the user's finger while drawing.
+   * Defaults to `false` to keep the classic ink-only look.
+   */
+  signingAnimationEnabled?: boolean;
+  /**
+   * Overrides the color of the drawing animation. Falls back to the stroke color when omitted.
+   * Accepts any React Native color value, including rgba strings for custom opacity.
+   */
+  signingAnimationColor?: ColorValue;
+  /**
+   * Controls how long each ripple animation lasts in milliseconds. Defaults to `220` ms.
+   */
+  signingAnimationDuration?: number;
+  /**
+   * Sets the maximum radius of the ripple as a multiplier of the current stroke width.
+   * Higher values produce larger waves around the finger. Defaults to `3`.
+   */
+  signingAnimationRadiusMultiplier?: number;
   /**
    * Fires when the user starts a new stroke.
    */

@@ -3,8 +3,6 @@ import React
 
 @objc(RNSignatureViewManager)
 class RNSignatureViewManager: RCTViewManager {
-  private var signatureView: RNSignatureView?
-  
   override static func moduleName() -> String! {
     return "RNSignatureView"
   }
@@ -14,9 +12,7 @@ class RNSignatureViewManager: RCTViewManager {
   }
 
   override func view() -> UIView! {
-    let view = RNSignatureView(frame: .zero)
-    signatureView = view
-    return view
+    return RNSignatureView(frame: .zero)
   }
 
   // Note: supportedEvents and customDirectEventTypes are handled automatically
@@ -34,37 +30,39 @@ class RNSignatureViewManager: RCTViewManager {
   }
 
   @objc func save(_ reactTag: NSNumber) {
-    print("🔍 [iOS Manager] save() called with reactTag: \(reactTag)")
-    
-    // Use the stored reference instead of view registry
-    guard let view = signatureView else {
-      print("❌ [iOS Manager] No signature view reference stored")
-      return
+    bridge.uiManager?.addUIBlock { _, viewRegistry in
+      guard let view = viewRegistry?[reactTag] as? RNSignatureView else {
+        NSLog("[RNSignatureViewManager] save: view not found for tag %@", reactTag)
+        return
+      }
+      view.saveSignature()
     }
-    
-    print("✅ [iOS Manager] Found stored RNSignatureView, calling saveSignature()")
-    view.saveSignature()
   }
 
   @objc func clear(_ reactTag: NSNumber) {
-    guard let view = signatureView else {
-      return
+    bridge.uiManager?.addUIBlock { _, viewRegistry in
+      guard let view = viewRegistry?[reactTag] as? RNSignatureView else {
+        return
+      }
+      view.clear()
     }
-    
-    view.clear()
   }
 
   @objc func setStrokeColor(_ reactTag: NSNumber, color: NSNumber) {
-    guard let view = signatureView else {
-      return
+    bridge.uiManager?.addUIBlock { _, viewRegistry in
+      guard let view = viewRegistry?[reactTag] as? RNSignatureView else {
+        return
+      }
+      view.updateStrokeColor(RCTConvert.uiColor(color))
     }
-    view.updateStrokeColor(RCTConvert.uiColor(color))
   }
 
   @objc func setStrokeWidth(_ reactTag: NSNumber, width: NSNumber) {
-    guard let view = signatureView else {
-      return
+    bridge.uiManager?.addUIBlock { _, viewRegistry in
+      guard let view = viewRegistry?[reactTag] as? RNSignatureView else {
+        return
+      }
+      view.updateStrokeWidth(CGFloat(truncating: width))
     }
-    view.updateStrokeWidth(CGFloat(truncating: width))
   }
 }
