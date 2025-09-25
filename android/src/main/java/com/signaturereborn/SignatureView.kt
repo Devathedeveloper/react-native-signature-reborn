@@ -9,6 +9,7 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.util.AttributeSet
+import android.util.Base64
 import android.view.MotionEvent
 import android.view.View
 import com.facebook.react.bridge.Arguments
@@ -19,6 +20,22 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
+import kotlin.math.max
+import kotlin.math.roundToInt
+
+private enum class ExportFormat(val compressFormat: Bitmap.CompressFormat, val fileExtension: String) {
+  PNG(Bitmap.CompressFormat.PNG, "png"),
+  JPEG(Bitmap.CompressFormat.JPEG, "jpg");
+
+  companion object {
+    fun from(value: String?): ExportFormat {
+      return when (value?.lowercase()) {
+        "jpeg", "jpg" -> JPEG
+        else -> PNG
+      }
+    }
+  }
+}
 
 private data class Stroke(val path: Path, val paint: Paint)
 
@@ -29,6 +46,12 @@ class SignatureView @JvmOverloads constructor(
 
   var strokeColor: Int = Color.BLACK
   var strokeWidth: Float = 3f
+
+  private var imageFormat: ExportFormat = ExportFormat.PNG
+  private var imageQuality: Float = DEFAULT_JPEG_QUALITY
+  private var shouldIncludeBase64: Boolean = true
+  private var exportScale: Float = 0f
+  private var imageBackgroundColor: Int? = null
 
   private val strokes = mutableListOf<Stroke>()
   private var currentStroke: Stroke? = null
@@ -115,6 +138,26 @@ class SignatureView @JvmOverloads constructor(
     strokeWidth = width
   }
 
+  fun setImageFormat(value: String?) {
+    imageFormat = ExportFormat.from(value)
+  }
+
+  fun setImageQualityInternal(quality: Double?) {
+    imageQuality = quality?.toFloat()?.let { clampQuality(it) } ?: DEFAULT_JPEG_QUALITY
+  }
+
+  fun setShouldIncludeBase64Internal(include: Boolean?) {
+    shouldIncludeBase64 = include ?: true
+  }
+
+  fun setExportScaleInternal(scale: Double?) {
+    exportScale = clampScale(scale)
+  }
+
+  fun setImageBackgroundColorInternal(color: Int?) {
+    imageBackgroundColor = color
+  }
+
   fun saveSignature() {
     val map = renderSignature() ?: return
     dispatchSaveEvent(map)
@@ -125,34 +168,60 @@ class SignatureView @JvmOverloads constructor(
       return null
     }
 
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val scale = resolveExportScale()
+    val outputWidth = max(1, (width * scale).roundToInt())
+    val outputHeight = max(1, (height * scale).roundToInt())
+    val bitmap = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    if (background != null) {
-      background.draw(canvas)
+    val customBackground = imageBackgroundColor
+    if (customBackground != null) {
+      canvas.drawColor(customBackground)
     } else {
-      canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+      val drawable = background
+      if (drawable != null) {
+        val previousBounds = drawable.copyBounds()
+        drawable.setBounds(0, 0, outputWidth, outputHeight)
+        drawable.draw(canvas)
+        drawable.setBounds(previousBounds.left, previousBounds.top, previousBounds.right, previousBounds.bottom)
+      } else {
+        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+      }
+    }
+
+    if (scale != 1f) {
+      canvas.save()
+      canvas.scale(scale, scale)
     }
 
     for (stroke in strokes) {
       canvas.drawPath(stroke.path, stroke.paint)
     }
 
+    if (scale != 1f) {
+      canvas.restore()
+    }
+
     val stream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+    bitmap.compress(imageFormat.compressFormat, resolvedQuality(), stream)
     bitmap.recycle()
 
     val bytes = stream.toByteArray()
     stream.close()
 
-    val file = File(context.cacheDir, "signature-${UUID.randomUUID()}.png")
+    val file = File(
+      context.cacheDir,
+      "signature-${UUID.randomUUID()}.${imageFormat.fileExtension}"
+    )
     FileOutputStream(file).use { output ->
       output.write(bytes)
     }
 
     return Arguments.createMap().apply {
       putString("path", file.absolutePath)
-      putString("base64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+      if (shouldIncludeBase64) {
+        putString("base64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+      }
     }
   }
 
@@ -166,5 +235,33 @@ class SignatureView @JvmOverloads constructor(
     val reactContext = context as? ReactContext ?: return
     reactContext.getJSModule(RCTEventEmitter::class.java)
       .receiveEvent(id, event, Arguments.createMap())
+  }
+
+  private fun clampQuality(value: Float): Float {
+    return value.coerceIn(0f, 1f)
+  }
+
+  private fun clampScale(value: Double?): Float {
+    val raw = value?.toFloat() ?: 0f
+    if (raw.isNaN() || raw.isInfinite() || raw <= 0f) {
+      return 0f
+    }
+    return raw.coerceIn(0.1f, 4f)
+  }
+
+  private fun resolveExportScale(): Float {
+    return if (exportScale > 0f) exportScale else 1f
+  }
+
+  private fun resolvedQuality(): Int {
+    return if (imageFormat == ExportFormat.JPEG) {
+      (imageQuality * 100).roundToInt().coerceIn(0, 100)
+    } else {
+      100
+    }
+  }
+
+  private companion object {
+    const val DEFAULT_JPEG_QUALITY = 0.8f
   }
 }

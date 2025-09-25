@@ -23,6 +23,31 @@ class SignatureViewManager : SimpleViewManager<SignatureView>() {
     width?.let { view.setStrokeWidthInternal(it) }
   }
 
+  @ReactProp(name = "imageFormat")
+  fun setImageFormat(view: SignatureView, format: String?) {
+    view.setImageFormat(format)
+  }
+
+  @ReactProp(name = "imageQuality")
+  fun setImageQuality(view: SignatureView, quality: Double?) {
+    view.setImageQualityInternal(quality)
+  }
+
+  @ReactProp(name = "shouldIncludeBase64")
+  fun setShouldIncludeBase64(view: SignatureView, include: Boolean?) {
+    view.setShouldIncludeBase64Internal(include)
+  }
+
+  @ReactProp(name = "imageBackgroundColor", customType = "Color")
+  fun setImageBackgroundColor(view: SignatureView, color: Int?) {
+    view.setImageBackgroundColorInternal(color)
+  }
+
+  @ReactProp(name = "exportScale")
+  fun setExportScale(view: SignatureView, scale: Double?) {
+    view.setExportScaleInternal(scale)
+  }
+
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> {
     return MapBuilder.builder<String, Any>()
       .put("onSave", MapBuilder.of("registrationName", "onSave"))
