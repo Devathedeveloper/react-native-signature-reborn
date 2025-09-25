@@ -157,9 +157,12 @@ class RNSignatureView: UIView {
   }
 
   func saveSignature() {
+    print("🔍 [iOS] saveSignature() called")
     guard bounds.width > 0, bounds.height > 0 else {
+      print("❌ [iOS] Invalid bounds: \(bounds)")
       return
     }
+    print("✅ [iOS] Bounds are valid: \(bounds)")
 
     let fillColor = imageBackgroundColor ?? backgroundColor
     let format = UIGraphicsImageRendererFormat.default()
@@ -190,8 +193,10 @@ class RNSignatureView: UIView {
     }
 
     guard let data else {
+      print("❌ [iOS] Failed to create image data")
       return
     }
+    print("✅ [iOS] Image data created, size: \(data.count) bytes")
 
     let filename = "signature-\(UUID().uuidString).\(exportFormat.fileExtension)"
     let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(filename)
@@ -204,9 +209,14 @@ class RNSignatureView: UIView {
 
       if shouldIncludeBase64 {
         payload["base64"] = data.base64EncodedString()
+        print("✅ [iOS] Base64 included, length: \(data.base64EncodedString().count)")
       }
+      print("🎯 [iOS] About to call onSave callback with payload: \(payload)")
+      print("🔍 [iOS] onSave callback exists: \(onSave != nil)")
       onSave?(payload)
+      print("✅ [iOS] onSave callback called!")
     } catch {
+      print("❌ [iOS] Error saving file: \(error)")
       NSLog("[RNSignatureView] Failed to persist signature: %@", error.localizedDescription)
     }
   }

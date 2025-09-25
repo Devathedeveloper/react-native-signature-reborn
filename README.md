@@ -1,6 +1,8 @@
 # React Native Signature Reborn
 
-A production-ready, native-accelerated signature capture component for React Native that feels at home on both iOS and Android. Draw fluid signatures, tweak stroke settings on the fly, and export perfectly crisp PNGs together with a Base64 payload – all wrapped in a TypeScript-first API.
+A native-accelerated signature capture component for React Native that feels at home on both iOS and Android. Draw fluid signatures, tweak stroke settings on the fly, and export perfectly crisp PNGs together with a Base64 payload – all wrapped in a TypeScript-first API.
+
+> ⚠️ **Currently in Testing Phase** - This library is under active development and testing. While the core functionality is working, please use with caution in production environments and report any issues you encounter.
 
 ## Features
 
@@ -26,6 +28,35 @@ bun add react-native-signature-reborn
 ```
 
 After installing, run `pod install` inside your iOS directory (as you would for any native dependency).
+
+## Testing Status
+
+This library is currently in **active testing phase**. Here's what we know:
+
+### ✅ **Working Features**
+- Basic signature drawing and clearing
+- PNG/JPEG export with Base64 encoding
+- Stroke color and width customization
+- iOS and Android compatibility
+- TypeScript support
+- Simplified API with better performance
+
+### 🧪 **Under Testing**
+- Various device configurations and screen sizes
+- Memory usage and performance optimization
+- Edge cases and error handling
+- Export quality and file size optimization
+
+### 🐛 **Known Issues**
+- Some iOS compilation issues have been recently fixed
+- API has been simplified and may require code updates
+- Testing on different React Native versions ongoing
+
+### 📝 **Reporting Issues**
+If you encounter any problems, please:
+1. Test with the latest version (0.2.1+)
+2. Report issues with device info and reproduction steps
+3. Check the usage examples for proper implementation
 
 ## Usage
 
@@ -157,9 +188,11 @@ interface SignatureResult {
 
 ## Troubleshooting
 
+- **Testing Phase Warning**: This library is under active development. Use with caution in production and report any issues.
 - Ensure you call `save()` after the user finishes drawing. The resulting PNG is stored inside the OS cache directory – copy or upload it before the cache is cleared.
 - If you change the component size dynamically, the canvas will scale automatically, but clearing before resizing provides the crispest results.
-- When submitting to the App Store or Play Store, you can safely bundle this library; it does not rely on any deprecated APIs.
+- **API Changes**: The API has been simplified in recent versions. Check the usage examples for the current implementation.
+- **Build Issues**: If you encounter compilation errors, ensure you're using the latest version (0.2.1+) with the fixed TypeScript configuration.
 
 ## Building & releasing
 

@@ -18,20 +18,22 @@ class SignatureViewManager : SimpleViewManager<SignatureView>() {
     color?.let { view.setStrokeColorInternal(it) }
   }
 
-  @ReactProp(name = "strokeWidth")
-  fun setStrokeWidth(view: SignatureView, width: Float?) {
-    width?.let { view.setStrokeWidthInternal(it) }
-  }
+  // Temporarily commented out to fix type issue
+  // @ReactProp(name = "strokeWidth")
+  // fun setStrokeWidth(view: SignatureView, width: Float?) {
+  //   width?.let { view.setStrokeWidthInternal(it) }
+  // }
 
   @ReactProp(name = "imageFormat")
   fun setImageFormat(view: SignatureView, format: String?) {
     view.setImageFormat(format)
   }
 
-  @ReactProp(name = "imageQuality")
-  fun setImageQuality(view: SignatureView, quality: Double?) {
-    view.setImageQualityInternal(quality)
-  }
+  // Temporarily commented out to fix type issue
+  // @ReactProp(name = "imageQuality")
+  // fun setImageQuality(view: SignatureView, quality: Double?) {
+  //   quality?.let { view.setImageQualityInternal(it) }
+  // }
 
   @ReactProp(name = "shouldIncludeBase64")
   fun setShouldIncludeBase64(view: SignatureView, include: Boolean?) {
@@ -43,10 +45,11 @@ class SignatureViewManager : SimpleViewManager<SignatureView>() {
     view.setImageBackgroundColorInternal(color)
   }
 
-  @ReactProp(name = "exportScale")
-  fun setExportScale(view: SignatureView, scale: Double?) {
-    view.setExportScaleInternal(scale)
-  }
+  // Temporarily commented out to fix type issue
+  // @ReactProp(name = "exportScale")
+  // fun setExportScale(view: SignatureView, scale: Double?) {
+  //   scale?.let { view.setExportScaleInternal(it) }
+  // }
 
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> {
     return MapBuilder.builder<String, Any>()

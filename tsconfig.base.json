@@ -5,7 +5,10 @@
     "strict": true,
     "jsx": "react-native",
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
   },
-  "exclude": ["node_modules", "lib", "android", "ios", "example"]
+  "exclude": ["node_modules", "lib", "android", "ios", "example", "__tests__", "tests"]
 }

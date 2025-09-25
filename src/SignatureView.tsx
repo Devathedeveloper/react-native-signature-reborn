@@ -33,25 +33,63 @@ const getCommandId = (command: string) => {
   const viewManagerConfig =
     UIManager.getViewManagerConfig?.(COMPONENT_NAME) ??
     (UIManager as any)[COMPONENT_NAME];
+  
+  // Try Commands first (modern approach)
   const commands = viewManagerConfig?.Commands;
   if (commands && typeof commands[command] !== 'undefined') {
     return commands[command];
   }
-  return command;
+  
+  // Try Constants.Commands (iOS constantsToExport approach)
+  const constants = (viewManagerConfig as any)?.Constants;
+  if (constants?.Commands && typeof constants.Commands[command] !== 'undefined') {
+    return constants.Commands[command];
+  }
+  
+  // Hardcoded fallback
+  const commandMap: { [key: string]: number } = {
+    save: 0,
+    clear: 1,
+    setStrokeColor: 2,
+    setStrokeWidth: 3,
+  };
+  
+  if (commandMap[command] !== undefined) {
+    return commandMap[command];
+  }
+  
+  console.warn(`SignatureView: Unknown command '${command}', using fallback`);
+  return 0;
 };
 
 const dispatchCommand = (
-  viewRef: React.RefObject<unknown>,
+  viewRef: React.RefObject<any>,
   command: string,
   args: unknown[] = [],
 ) => {
-  const node = findNodeHandle(viewRef.current);
-  if (!node) {
+  console.log(`SignatureView: Attempting to dispatch '${command}' with args:`, args);
+  
+  if (!viewRef.current) {
+    console.warn(`SignatureView: Cannot dispatch '${command}' - ref is null`);
     return;
   }
 
-  const commandId = getCommandId(command);
-  UIManager.dispatchViewManagerCommand(node, commandId, args);
+  const node = findNodeHandle(viewRef.current);
+  console.log(`SignatureView: Node handle for '${command}':`, node);
+  
+  if (node === null || node === undefined) {
+    console.warn(`SignatureView: Cannot dispatch '${command}' - node handle is null`);
+    return;
+  }
+
+  try {
+    const commandId = getCommandId(command);
+    console.log(`SignatureView: Command ID for '${command}':`, commandId);
+    UIManager.dispatchViewManagerCommand(node, commandId, args);
+    console.log(`SignatureView: Successfully dispatched '${command}'`);
+  } catch (error) {
+    console.error(`SignatureView: Error dispatching '${command}':`, error);
+  }
 };
 
 export interface SignatureResult {
