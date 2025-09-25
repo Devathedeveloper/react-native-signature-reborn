@@ -1,4 +1,5 @@
 import Foundation
+import QuartzCore
 import React
 import UIKit
 
@@ -47,7 +48,13 @@ class RNSignatureView: UIView {
   @objc var onSave: RCTBubblingEventBlock?
   @objc var onStrokeStart: RCTDirectEventBlock?
   @objc var onStrokeEnd: RCTDirectEventBlock?
-  @objc var strokeColor: UIColor = .black
+  @objc var strokeColor: UIColor = .black {
+    didSet {
+      if !usesCustomAnimationColor {
+        resolvedAnimationColor = strokeColor.withAlphaComponent(1)
+      }
+    }
+  }
   @objc var strokeWidth: CGFloat = 3.0
   @objc var imageFormat: NSString = "png" {
     didSet {
@@ -66,12 +73,54 @@ class RNSignatureView: UIView {
       exportScaleFactor = RNSignatureView.clampScale(exportScale)
     }
   }
+  @objc var signingAnimationEnabled: Bool = false {
+    didSet {
+      if !signingAnimationEnabled {
+        clearRippleLayers()
+      }
+    }
+  }
+  @objc var signingAnimationColor: UIColor? {
+    didSet {
+      if let color = signingAnimationColor {
+        usesCustomAnimationColor = true
+        resolvedAnimationColor = color.withAlphaComponent(1)
+        let alpha = color.cgColor.alpha
+        if alpha > 0 && alpha < 1 {
+          animationBaseOpacity = Float(alpha)
+        } else {
+          animationBaseOpacity = Float(Self.defaultAnimationOpacity)
+        }
+      } else {
+        usesCustomAnimationColor = false
+        resolvedAnimationColor = strokeColor.withAlphaComponent(1)
+        animationBaseOpacity = Float(Self.defaultAnimationOpacity)
+      }
+    }
+  }
+  @objc var signingAnimationDuration: NSNumber = 220 {
+    didSet {
+      animationDuration = RNSignatureView.clampDuration(signingAnimationDuration)
+    }
+  }
+  @objc var signingAnimationRadiusMultiplier: NSNumber = 3 {
+    didSet {
+      animationRadiusMultiplier = RNSignatureView.clampRadius(signingAnimationRadiusMultiplier)
+    }
+  }
 
   private var strokes: [Stroke] = []
   private var currentStroke: Stroke?
   private var exportFormat: ExportFormat = .png
   private var exportQuality: CGFloat = 0.8
   private var exportScaleFactor: CGFloat = 0
+  private var resolvedAnimationColor: UIColor = .black
+  private var usesCustomAnimationColor: Bool = false
+  private var animationDuration: CFTimeInterval = RNSignatureView.defaultAnimationDuration
+  private var animationRadiusMultiplier: CGFloat = RNSignatureView.defaultAnimationRadiusMultiplier
+  private var animationBaseOpacity: Float = Float(RNSignatureView.defaultAnimationOpacity)
+  private var activeRippleLayers: [CAShapeLayer] = []
+  private var lastRipplePoint: CGPoint?
 
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -81,6 +130,7 @@ class RNSignatureView: UIView {
     exportFormat = ExportFormat(format: imageFormat as String)
     exportQuality = RNSignatureView.clampQuality(imageQuality)
     exportScaleFactor = RNSignatureView.clampScale(exportScale)
+    resolvedAnimationColor = strokeColor.withAlphaComponent(1)
   }
 
   required init?(coder: NSCoder) {
@@ -127,6 +177,8 @@ class RNSignatureView: UIView {
     strokes.append(stroke)
     currentStroke = stroke
     onStrokeStart?([:])
+    lastRipplePoint = point
+    spawnRipple(at: point, force: true)
     setNeedsDisplay()
   }
 
@@ -135,24 +187,29 @@ class RNSignatureView: UIView {
       return
     }
     addPoint(point)
+    spawnRipple(at: point)
   }
 
   override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
     if let point = touches.first?.location(in: self) {
       addPoint(point)
+      spawnRipple(at: point)
     }
     currentStroke = nil
+    lastRipplePoint = nil
     onStrokeEnd?([:])
   }
 
   override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
     currentStroke = nil
+    lastRipplePoint = nil
     onStrokeEnd?([:])
   }
 
   func clear() {
     strokes.removeAll()
     currentStroke = nil
+    clearRippleLayers()
     setNeedsDisplay()
   }
 
@@ -243,4 +300,105 @@ private extension RNSignatureView {
     }
     return min(max(scale, 0.1), 4)
   }
+
+  static func clampDuration(_ value: NSNumber) -> CFTimeInterval {
+    let raw = max(60, min(2000, value.doubleValue))
+    return raw / 1000.0
+  }
+
+  static func clampRadius(_ value: NSNumber) -> CGFloat {
+    let raw = CGFloat(truncating: value)
+    guard raw.isFinite, raw > 0 else {
+      return defaultAnimationRadiusMultiplier
+    }
+    return min(max(raw, 0.5), 12)
+  }
+
+  static func rippleSpacing(for strokeWidth: CGFloat) -> CGFloat {
+    return max(strokeWidth * 0.75, 6)
+  }
+
+  static let defaultAnimationDuration: CFTimeInterval = 0.22
+  static let defaultAnimationRadiusMultiplier: CGFloat = 3
+  static let defaultAnimationOpacity: CGFloat = 0.35
 }
+
+private extension RNSignatureView {
+  func spawnRipple(at point: CGPoint, force: Bool = false) {
+    guard signingAnimationEnabled else {
+      return
+    }
+
+    let radius = max(strokeWidth, 1) * animationRadiusMultiplier
+    guard radius > 0 else {
+      return
+    }
+
+    if !force, let last = lastRipplePoint {
+      let dx = point.x - last.x
+      let dy = point.y - last.y
+      let distance = hypot(dx, dy)
+      if distance < Self.rippleSpacing(for: strokeWidth) {
+        return
+      }
+    }
+
+    lastRipplePoint = point
+
+    let rippleLayer = CAShapeLayer()
+    rippleLayer.fillColor = resolvedAnimationColor.cgColor
+    rippleLayer.opacity = animationBaseOpacity
+
+    let startPath = UIBezierPath(ovalIn: CGRect(origin: point, size: .zero))
+    let endRect = CGRect(
+      x: point.x - radius,
+      y: point.y - radius,
+      width: radius * 2,
+      height: radius * 2
+    )
+    let endPath = UIBezierPath(ovalIn: endRect)
+    rippleLayer.path = endPath.cgPath
+
+    layer.addSublayer(rippleLayer)
+    activeRippleLayers.append(rippleLayer)
+
+    CATransaction.begin()
+    CATransaction.setCompletionBlock { [weak self, weak rippleLayer] in
+      guard let layer = rippleLayer else { return }
+      layer.removeAllAnimations()
+      layer.removeFromSuperlayer()
+      self?.activeRippleLayers.removeAll { $0 === layer }
+    }
+
+    let group = CAAnimationGroup()
+    group.duration = animationDuration
+    group.timingFunction = CAMediaTimingFunction(name: .easeOut)
+    group.fillMode = .forwards
+    group.isRemovedOnCompletion = false
+
+    let pathAnimation = CABasicAnimation(keyPath: "path")
+    pathAnimation.fromValue = startPath.cgPath
+    pathAnimation.toValue = endPath.cgPath
+
+    let opacityAnimation = CABasicAnimation(keyPath: "opacity")
+    opacityAnimation.fromValue = animationBaseOpacity
+    opacityAnimation.toValue = 0
+
+    group.animations = [pathAnimation, opacityAnimation]
+    rippleLayer.add(group, forKey: "ripple")
+
+    CATransaction.commit()
+  }
+
+  func clearRippleLayers() {
+    guard !activeRippleLayers.isEmpty else {
+      return
+    }
+    activeRippleLayers.forEach { layer in
+      layer.removeAllAnimations()
+      layer.removeFromSuperlayer()
+    }
+    activeRippleLayers.removeAll()
+  }
+}
+

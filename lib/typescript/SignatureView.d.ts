@@ -57,6 +57,25 @@ export interface SignatureViewProps extends ViewProps {
      */
     exportScale?: number;
     /**
+     * Enables the native ripple animation that follows the user's finger while drawing.
+     * Defaults to `false` to keep the classic ink-only look.
+     */
+    signingAnimationEnabled?: boolean;
+    /**
+     * Overrides the color of the drawing animation. Falls back to the stroke color when omitted.
+     * Accepts any React Native color value, including rgba strings for custom opacity.
+     */
+    signingAnimationColor?: ColorValue;
+    /**
+     * Controls how long each ripple animation lasts in milliseconds. Defaults to `220` ms.
+     */
+    signingAnimationDuration?: number;
+    /**
+     * Sets the maximum radius of the ripple as a multiplier of the current stroke width.
+     * Higher values produce larger waves around the finger. Defaults to `3`.
+     */
+    signingAnimationRadiusMultiplier?: number;
+    /**
      * Fires when the user starts a new stroke.
      */
     onStrokeStart?: () => void;
